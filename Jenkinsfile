@@ -1,66 +1,89 @@
+@Library('SharedLibKKFunda') _
+pipeline {
 
-//qa jenkins pipeline
-pipeline
-{
-	
-   agent any
-   tools
-   {
-      maven "maven-3.9.14"
-   }
-   stages
-   {
-           stage('git checkout')
-           {
-              steps
-              {
-                 
-                 git branch: 'qa', url: 'https://github.com/kkdevopsb8/maven-webapplication-project-kkfunda.git'
-              }
-           }
-           stage('compile')
-           {
-              steps
-              {
-                 sh "mvn compile"
-              }
-           }
-           stage('Build')
-           {
-             steps
-             {
-               sh "mvn clean package"
-             }
-           }
-         stage('SQ REPORT')
-           {
-             steps
-             {
+    agent any
+
+    tools {
+        maven "Maven_3.9.9"
+    }
+
+    stages {
+        
+        stage('Set Build Name') {
+            steps {
+                script {
+                    currentBuild.displayName = "Airtel-Dev-Release-${env.BUILD_NUMBER}"
+                    currentBuild.description = "CI/CD Pipeline for Airtel-Dev"
+                }
+            }
+        }
+        
+    
+        
+        stage('Git Checkout') {
+            steps {
+                git branch: 'qa', url: 'https://github.com/naniawsk8s-sudo/maven-webapplication-project-kkfunda.git'
+            }
+        }
+
+        stage('Compile') {
+            steps {
+                sh "mvn clean compile"
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh "mvn package"
+            }
+        }
+
+        stage('SonarQube Report') {
+            steps {
                 sh "mvn sonar:sonar"
-             }
-           }   
-           stage('Deploy to nexus')
-           {
-              steps
-              {
-                sh "mvn clean deploy"
-              }
-           }
-           stage('Deploy to tomcat')
-           {
-              steps
-              {
-                 sh """
+            }
+        }
 
-      curl -u kk:password \
---upload-file /var/lib/jenkins/workspace/MBPL-JIO-OM_qa/target/maven-web-application.war \
-"http://13.232.26.179:8080/manager/text/deploy?path=/maven-web-application&update=true"
-          
-        """
-              }
-           }
-         
+        stage('Deploy to Nexus') {
+            steps {
+                sh "mvn deploy"
+            }
+        }
 
-   }  //stages ending
-} // pipeline ending
+      	stage('deploy to tomcat')
+		{
+			steps{
+				deploy adapters: [
+					tomcat9(
+							credentialsId: 'tomcat',
+							url: 'http://13.126.65.220:8080'
+						)
+				],
+				contextPath:'/maven-web-application', // target path 
+				war: 'target/*.war' // source path 
+				
+				}
+		}
+		stage('downstream-Airtel-prod')
+		{
+			steps{
+				build job: 'aitel-Prod' //  This is downstream
+			}
+		}
+		
+    }
 
+    post {
+        success {
+            script {
+                sendSlackNotifications(currentBuild.result)
+            }
+        }
+
+        failure {
+            script {
+                sendSlackNotifications(currentBuild.result)
+            }
+        }
+    }
+}
