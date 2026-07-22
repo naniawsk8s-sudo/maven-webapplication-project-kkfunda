@@ -1,77 +1,57 @@
+// parallel jobs
+pipeline {
 
-//dev jenkins pipeline
-pipeline
-{
-    
-   agent any
-   tools
-   {
-      maven "maven-3.9.7"
-   }
-   stages
-   {
-           stage('git checkout')
-           {
-              steps
-              {
-                 
-                 git branch: 'dev', url: 'https://github.com/kkdevopsb7/maven-webapplication-project-kkfunda.git'
-              }
-           }
-           stage('compile')
-           {
-              steps
-              {
-                 sh "mvn compile"
-              }
-           }
-           stage('Build')
-           {
-             steps
-             {
-               sh "mvn clean package"
-             }
-           }
-         stage('SQ REPORT')
-           {
-             steps
-             {
-                sh "mvn sonar:sonar"
-             }
-           }   
-           stage('Deploy to nexus')
-           {
-              steps
-              {
-                sh "mvn clean deploy"
-              }
-           }
-           stage('Deploy to tomcat')
-           {
-              steps
-              {
-                 sh """
+    agent any  // This means the pipeline can run on any available Jenkins agent
 
-      curl -u kk:password \
---upload-file /var/lib/jenkins/workspace/jio-Declarative-PL-dev/target/maven-web-application.war \
-"http://13.232.234.199:8080/manager/text/deploy?path=/maven-web-application&update=true"
-          
-        """
-              }
-           }
-           stage('airtel-qa')
-           {
-              steps
-              {
-                 build job: 'airtel-qa'  //This down stream job
-              }
-           }
+    tools {
+        maven 'maven 3.9.9'   // Use Maven 3.9.9 tool configured in Jenkins
+    }
 
-   }  //stages ending
+    stages {
 
-   } //pipeline ending
+        // Stage 1: Checkout the code from GitHub
+        stage('Checkout') {
+            steps {
+				 git branch: 'master', url: 'https://github.com/naniawsk8s-sudo/maven-webapplication-project-kkfunda.git'
+			   }
+        }
 
 
+        // Stage 2: Maven Build, Sonar scan, and Nexus deploy (Run in parallel)
+        stage('maven and sonar') {
+            steps {
+                parallel (
+                    "Build": {
+                        sh "mvn clean package"  // Run Maven build
+                    },
+                    "Sonar": {
+                        sh "mvn sonar:sonar"  // Run Sonar scan
 
-
-
+                    }
+                )
+            }
+        }
+		
+		// Stage 3 : Tomcat and nexus deploymebn 
+		stage('Nexus and Tomcat')
+			steps{
+				parallel (
+					"Build": {
+						sh "mvn deploy" // nexus deploy
+					}
+					"Tomcat": {
+								deploy adapters: [
+									tomcat9(
+									credentialsId: 'tomcat',
+									url: 'http://13.126.65.220:8080'
+									)
+								],
+								contextPath:'/maven-web-application', // target path 
+								war: 'target/*.war' // source path 	
+							}
+						)
+				}
+		
+		
+    }
+}
