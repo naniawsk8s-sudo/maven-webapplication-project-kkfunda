@@ -67,7 +67,7 @@ pipeline {
 		stage('downstream-Airtel-prod')
 		{
 			steps{
-				build job: 'aitel-Prod' //  This is downstream
+				build job: 'airtel-Prod' //  This is downstream
 			}
 		}
 		
