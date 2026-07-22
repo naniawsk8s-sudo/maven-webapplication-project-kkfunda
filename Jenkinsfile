@@ -38,7 +38,7 @@ pipeline {
 				parallel (
 					"Build": {
 						sh "mvn deploy" // nexus deploy
-					}
+					},
 					"Tomcat": {
 								deploy adapters: [
 									tomcat9(
