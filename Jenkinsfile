@@ -1,52 +1,90 @@
-pipeline
-{
-	agent any
-	tools
-	{
-	  maven "maven-3.9.14"
-	}
-	stages
-	{
-	 stage('checkout')
-	 {
-	    steps
-	    {
-	   git branch: 'dev', url: 'https://github.com/kkdevopsb8/maven-webapplication-project-kkfunda.git'
-	   }
-	 }
-	 stage('Build')
-	 {
-	   steps
-	   {
-	      sh "mvn clean package"
-	   }
-	 }
-	 stage('SQ REPORT')
-	 {
-	   steps
-	   {
-	   sh "mvn sonar:sonar"
-	   }
-	 }
-	 stage('Upload to nexus')
-	 {
-	     steps
-	     {
-	    sh "mvn deploy"
-	     }
-	 }
-	 stage('Deploy to tomcat')
-	 {
-	   steps
-	   {
-	      sh '''
-            curl -u kk:password \
-            --upload-file /var/lib/jenkins/workspace/Declarative-PL-Dev/target/maven-web-application.war \
-            "http://13.232.26.179:8080/manager/text/deploy?path=/maven-web-application&update=true"
-            '''
-	   }
-	 }
 
-	} //stages  ending
+@Library('SharedLibKKFunda') _
+pipeline {
 
-} //pipeline ending
+    agent any
+
+    tools {
+        maven "Maven_3.9.9"
+    }
+
+    stages {
+        
+        stage('Set Build Name') {
+            steps {
+                script {
+                    currentBuild.displayName = "Airtel-Dev-Release-${env.BUILD_NUMBER}"
+                    currentBuild.description = "CI/CD Pipeline for Airtel-Dev"
+                }
+            }
+        }
+        
+    
+        
+        stage('Git Checkout') {
+            steps {
+                git branch: 'dev', url: 'https://github.com/naniawsk8s-sudo/maven-webapplication-project-kkfunda.git'
+            }
+        }
+
+        stage('Compile') {
+            steps {
+                sh "mvn clean compile"
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh "mvn package"
+            }
+        }
+
+        stage('SonarQube Report') {
+            steps {
+                sh "mvn sonar:sonar"
+            }
+        }
+
+        stage('Deploy to Nexus') {
+            steps {
+                sh "mvn deploy"
+            }
+        }
+
+      	stage('deploy to tomcat')
+		{
+			steps{
+				deploy adapters: [
+					tomcat9(
+							credentialsId: 'tomcat',
+							url: 'http://13.126.65.220:8080'
+						)
+				],
+				contextPath:'/maven-web-application', // target path 
+				war: 'target/*.war' // source path 
+				
+				}
+		}
+		stage('downstream-Airtel-Dev')
+		{
+			steps{
+				build job: 'aitel-QA' //  This is downstream
+			}
+		}
+		
+    }
+
+    post {
+        success {
+            script {
+                sendSlackNotifications(currentBuild.result)
+            }
+        }
+
+        failure {
+            script {
+                sendSlackNotifications(currentBuild.result)
+            }
+        }
+    }
+}
