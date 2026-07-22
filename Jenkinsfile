@@ -12,7 +12,7 @@ pipeline {
         // Stage 1: Checkout the code from GitHub
         stage('Checkout') {
             steps {
-				 git branch: 'master', url: 'https://github.com/naniawsk8s-sudo/maven-webapplication-project-kkfunda.git'
+				 git branch: 'f9', url: 'https://github.com/naniawsk8s-sudo/maven-webapplication-project-kkfunda.git'
 			   }
         }
 
