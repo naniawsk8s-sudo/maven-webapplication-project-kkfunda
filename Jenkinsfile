@@ -12,7 +12,7 @@ pipeline {
         stage('Set Build Name') {
             steps {
                 script {
-                    currentBuild.displayName = "Airtel-Dev-Release-${env.BUILD_NUMBER}"
+                    currentBuild.displayName = "Airtel-qa-Release-${env.BUILD_NUMBER}"
                     currentBuild.description = "CI/CD Pipeline for Airtel-Dev"
                 }
             }
